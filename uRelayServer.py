@@ -10,19 +10,19 @@ def broadcast_message(sender, message):
 				socket.send(message)
 			except:
 				
-				# Removes sockets which cannot recieve a message
+				# Removes sockets which cannot receive a message
 				if socket in connected_sockets:
 					socket.close()
 					connected_sockets.remove(socket)
 
 					print "Client (%s:%s) disconected" % addr
 	
-def private_message (reciever, message):
+def private_message (receiver, message):
 	try:
-		reciever.send(message)
+		receiver.send(message)
 	except:
-		reciever.close()
-		connected_sockets.remove(reciever)
+		receiver.close()
+		connected_sockets.remove(receiver)
 		
 #def login(socket):
 	#message = "Username: "
