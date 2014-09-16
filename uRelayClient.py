@@ -9,9 +9,10 @@ def prompt() :
 if __name__ == "__main__":
 	
 	if (len(sys.argv) !=3):
+
 		print 'Usage: python %s <hostname> <port>' % sys.argv[0]
 		sys.exit(2)
-	
+
 	host = sys.argv[1]
 	port = int(sys.argv[2])
 	BUFFER = 4096
