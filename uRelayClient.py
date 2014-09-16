@@ -9,7 +9,7 @@ def prompt() :
 if __name__ == "__main__":
 	
 	if (len(sys.argv) !=3):
-		print 'Usage: python %s <hostname> <port>" % argv[0]
+		print 'Usage: python %s <hostname> <port>" % str(argv[0])s
 	
 	username = input("Username: ")
 	
