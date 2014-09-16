@@ -1,16 +1,32 @@
 import socket, select
 
+Users = []
+
 # Sends message to all connected users except sender
-def broadcast_message(sock, message):
+def broadcast_message(sender, message):
 	for socket in connected_sockets:
-		if socket != server_socket and socket != sock:
+		if socket != server_socket and socket != sender:
 			try:
 				socket.send(message)
 			except:
-				socket.close()
-				connected_sockets.remove(socket)
+				
+				# Removes sockets which cannot recieve a message
+				if socket in connected_sockets:
+					socket.close()
+					connected_sockets.remove(socket)
 
-				print "[%s:%s] disconected\n" % addr
+					print "Client (%s:%s) disconected" % addr
+	
+def private_message (reciever, message):
+	try:
+		reciever.send(message)
+	except:
+		reciever.close()
+		connected_sockets.remove(reciever)
+		
+def login(socket):
+	#message = "Username: "
+	#private_message(socket, message)
 
 # Main Method
 if __name__ == "__main__":
@@ -40,27 +56,37 @@ if __name__ == "__main__":
 			# New Connection
 			if sock == server_socket:
 				new_socket, addr = server_socket.accept()
+				
 				connected_sockets.append(new_socket)
 				
-				# Why are there two %s
-				print "Client (%s, %s) connected\n" % addr
-
-				broadcast_message(new_socket, "[%s:%s] connected\n" % addr)
-
+				result = login (new_socket)
+					
+				print "Client (%s, %s) connected" % addr
+				broadcast_message(new_socket, "[%s:%s] connected" % addr)
+				
+				
 			# Incoming message
 			else:
 				try:
 					message = sock.recv(BUFFER)
 
 					if message:
+					
+						# Check for command
+						if message[:1] == '/':
+							if message[:5] == "/name":
+								
+					
 						name = "\n<" + str(sock.getpeername()) + '> '
 						broadcast_message(sock, name + message)
+						
+						print "%s %s" % (str(sock.getpeername()), message)
 				except:
 					broadcast_message(sock, "[%s:%s] disconected" % addr)
-					print "Client (%s, %s) disconected\n" % addr
+					print "Client (%s, %s) disconected" % addr
 					
-					if sock in connected_sockets:
-						sock.close()
-						connected_sockets.remove(sock)
+					# Removes socket attempting to send a message
+					sock.close()
+					connected_sockets.remove(sock)
 
 	server_socket.close()
