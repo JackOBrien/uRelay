@@ -1,32 +1,51 @@
 import socket, select
 
-Users = []
+users = {}
+
+welcome_message = "Welcome!"
 
 # Sends message to all connected users except sender
 def broadcast_message(sender, message):
+	print "--Broadcasting: %s" % message
 	for socket in connected_sockets:
 		if socket != server_socket and socket != sender:
 			try:
-				socket.send(message)
+				peername = str(sender.getpeername())
+				print peername
+				name = users[peername]
+				print name
+				socket.send("\n<%s> %s" % (name, message))
+				print "--Send message to %s" % str(socket.getpeername())
 			except:
 				
-				# Removes sockets which cannot receive a message
-				if socket in connected_sockets:
-					socket.close()
-					connected_sockets.remove(socket)
+				print "--Except in boradcast"
 
-					print "Client (%s:%s) disconected" % addr
+				peername = str(socket.getpeername())
+
+				# Removes sockets which cannot receive a message
+				connected_sockets.remove(socket)
+				socket.close()
+
+				print "Client %s disconected" % peername
 	
 def private_message (receiver, message):
 	try:
-		receiver.send(message)
+		receiver.send("%s\n" % message)
 	except:
 		receiver.close()
 		connected_sockets.remove(receiver)
 		
-#def login(socket):
-	#message = "Username: "
-	#private_message(socket, message)
+def login_message(new_guy):
+	name = users[str(new_guy.getpeername())]
+	print "[%s] Connected to Server" % name
+	for socket in connected_sockets:
+		if socket == server_socket: continue
+		if socket == new_guy:
+			msg = "%s\n%d %s\n" % (welcome_message, len(users),'Online')
+			private_message(socket, msg)
+		else:
+			msg = "--%s Connected--" % name
+			private_message(socket, msg)
 
 # Main Method
 if __name__ == "__main__":
@@ -55,39 +74,46 @@ if __name__ == "__main__":
 			
 			# New Connection
 			if sock == server_socket:
+				print "--New Connection"
+
 				new_socket, addr = server_socket.accept()
 				
 				connected_sockets.append(new_socket)
 				
 				#result = login (new_socket)
 					
-				print "Client (%s, %s) connected" % addr
-				broadcast_message(new_socket, "[%s:%s] connected" % addr)
 				
 				
 			# Incoming message
 			else:
-				try:
-					message = sock.recv(BUFFER)
-
-					if message:
-					
-						# Check for command
-						if message[:1] == '/':
-							if message[:5] == "/name":
-								continue
-							continue
-					
-						name = "\n<" + str(sock.getpeername()) + '> '
-						broadcast_message(sock, name + message)
-						
-						print "%s %s" % (str(sock.getpeername()), message)
+				try: sock.getpeername()
 				except:
+					continue
+
+				try:
+					print "--Recieving message from: %s" % str(sock.getpeername())
+					message = sock.recv(BUFFER)
+					print "--Message says: %s" % message
+					if message:
+						
+						# Check for command
+						if message[:1] == '/' or message[:4] == '`*`*':
+							if message[:8] == "`*`*name":
+								username = message[9:]
+								users[str(sock.getpeername())] = username
+								login_message(sock)
+						else:	
+							name = users[str(sock.getpeername())]
+							broadcast_message(sock, message)
+
+							print "[%s] %s" % (name, message)
+				except:
+					print "--Except in recieving"
 					broadcast_message(sock, "[%s:%s] disconected" % addr)
 					print "Client (%s, %s) disconected" % addr
 					
 					# Removes socket attempting to send a message
-					sock.close()
 					connected_sockets.remove(sock)
+					sock.close()
 
 	server_socket.close()

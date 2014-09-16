@@ -16,7 +16,10 @@ if __name__ == "__main__":
 	host = sys.argv[1]
 	port = int(sys.argv[2])
 	BUFFER = 4096
-	
+
+	# Asks user for their name
+	username = raw_input("Username: ")
+
 	# Create IPv4 socket using TCP
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	
@@ -26,10 +29,7 @@ if __name__ == "__main__":
 	except:
 		print "Unable to connect to %s on port %d" % (host, port)
 		
-	# Asks user for their name
-	username = raw_input("Username: ")
-	
-	sock.send("/name %s" % username);
+	sock.send("`*`*name %s" % username);
 	
 	prompt()
 	
