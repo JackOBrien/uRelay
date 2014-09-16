@@ -24,7 +24,7 @@ def private_message (reciever, message):
 		reciever.close()
 		connected_sockets.remove(reciever)
 		
-def login(socket):
+#def login(socket):
 	#message = "Username: "
 	#private_message(socket, message)
 
@@ -39,7 +39,10 @@ if __name__ == "__main__":
 	server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-	server_ip = socket.gethostbyname(socket.gethostname())
+heck for command
+                        if message[:1] == '/':
+						                            if message[:5] == "/name":
+
 	server_socket.bind(("0.0.0.0", PORT))
 	server_socket.listen(10)
 
@@ -59,7 +62,7 @@ if __name__ == "__main__":
 				
 				connected_sockets.append(new_socket)
 				
-				result = login (new_socket)
+				#result = login (new_socket)
 					
 				print "Client (%s, %s) connected" % addr
 				broadcast_message(new_socket, "[%s:%s] connected" % addr)
@@ -75,7 +78,8 @@ if __name__ == "__main__":
 						# Check for command
 						if message[:1] == '/':
 							if message[:5] == "/name":
-								
+								continue
+							continue
 					
 						name = "\n<" + str(sock.getpeername()) + '> '
 						broadcast_message(sock, name + message)
