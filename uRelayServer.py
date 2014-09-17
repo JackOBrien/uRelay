@@ -10,23 +10,15 @@ def broadcast_message(sender, message):
 	for socket in connected_sockets:
 		if socket != server_socket and socket != sender:
 			try:
-				peername = str(sender.getpeername())
-				print peername
-				name = users[peername]
-				print name
-				socket.send("\n<%s> %s" % (name, message))
-				print "--Send message to %s" % str(socket.getpeername())
+				sender_name = users[sender]
+				socket.send("\n<%s> %s" % (sender_name, message))
+				print "--Sent message to %s" % users[socket]
 			except:
 				
 				print "--Except in boradcast"
 
-				peername = str(socket.getpeername())
+				logout(socket)
 
-				# Removes sockets which cannot receive a message
-				connected_sockets.remove(socket)
-				socket.close()
-
-				print "Client %s disconected" % peername
 	
 def private_message (receiver, message):
 	try:
@@ -36,16 +28,34 @@ def private_message (receiver, message):
 		connected_sockets.remove(receiver)
 		
 def login_message(new_guy):
-	name = users[str(new_guy.getpeername())]
+	name = users[new_guy]
 	print "[%s] Connected to Server" % name
 	for socket in connected_sockets:
 		if socket == server_socket: continue
 		if socket == new_guy:
-			msg = "%s\n%d %s\n" % (welcome_message, len(users),'Online')
+			msg = "%s\n\t%d %s\n" % (welcome_message, len(users),'Online')
 			private_message(socket, msg)
 		else:
-			msg = "--%s Connected--" % name
+			msg = "\n--%s Connected--" % name
 			private_message(socket, msg)
+
+# Removes socket 
+def logout(socket):
+	print "-- Attempting to logout"
+	name = users[socket]
+	print "-- Loging out <%s>" % name
+	del users[socket]
+	connected_sockets.remove(socket)
+	socket.close()
+	print "Client %s disconected" % name
+
+	msg = "\n--%s Disconnected--\n" % name
+	for socket in connected_sockets:
+		try:
+			if socket == server_socket: continue
+			socket.send(msg)
+		except:
+			print "--Except in logout--"
 
 # Main Method
 if __name__ == "__main__":
@@ -100,20 +110,16 @@ if __name__ == "__main__":
 						if message[:1] == '/' or message[:4] == '`*`*':
 							if message[:8] == "`*`*name":
 								username = message[9:]
-								users[str(sock.getpeername())] = username
+								users[sock] = username
 								login_message(sock)
 						else:	
-							name = users[str(sock.getpeername())]
+							name = users[sock]
 							broadcast_message(sock, message)
 
 							print "[%s] %s" % (name, message)
 				except:
 					print "--Except in recieving"
-					broadcast_message(sock, "[%s:%s] disconected" % addr)
-					print "Client (%s, %s) disconected" % addr
-					
-					# Removes socket attempting to send a message
-					connected_sockets.remove(sock)
-					sock.close()
+					print "--Exception from %s" % str(sock.getpeername())				
+					logout(sock)
 
 	server_socket.close()
