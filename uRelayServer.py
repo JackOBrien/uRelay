@@ -134,7 +134,8 @@ if __name__ == "__main__":
 					continue
 
 				try:
-					print "--Recieving message from: %s" % str(sock.getpeername())
+					print "--Recieving message from: %s" % str(
+						sock.getpeername())
 					message = sock.recv(BUFFER)
 					print "--Message says: %s" % message
 					if message:
@@ -146,7 +147,7 @@ if __name__ == "__main__":
 								users[sock] = username
 								login_message(sock)
 							if message[1:5] == 'list':
-								msg = whos_online()								
+								msg = whos_online()							
 								private_message(sock, msg)
 						else:	
 							name = users[sock]
@@ -155,7 +156,8 @@ if __name__ == "__main__":
 							print "[%s] %s" % (name, message)
 				except:
 					print "--Except in recieving"
-					print "--Exception from %s" % str(sock.getpeername())				
+					print "--Exception from %s" % str(sock.getpeername())	
+
 					logout(sock)
 
 	server_socket.close()
