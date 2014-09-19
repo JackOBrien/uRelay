@@ -24,7 +24,7 @@ def private_message (receiver, message):
 	try:
 		receiver.send("%s\n" % message)
 	except:
-		logout(reciever)
+		logout(receiver)
 
 def login_message(new_guy):
 	print "--Login Message--"
@@ -86,6 +86,9 @@ def whos_online():
 			else:
 				msg += ', ' + u
 	return "%s: %s Online" % (usr, msg)
+
+count_blanks = ()
+TOLERANCE = 20
 
 # Main Method
 if __name__ == "__main__":
@@ -154,6 +157,17 @@ if __name__ == "__main__":
 							broadcast_message(sock, message)
 
 							print "[%s] %s" % (name, message)
+
+					# Checks for disconnected users
+					else:
+						peer = sock.getpeername()
+						if count_blanks[0] == peer:
+							count_blanks[1] += 1
+							if count_blanks[1] > TOLERANCE:
+								logout(sock)
+						else:
+							count_blanks[0] = peer
+							count_blanks[1] = 1
 				except:
 					print "--Except in recieving"
 					print "--Exception from %s" % str(sock.getpeername())	
