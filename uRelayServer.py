@@ -24,18 +24,21 @@ def private_message (receiver, message):
 	try:
 		receiver.send("%s\n" % message)
 	except:
-		receiver.close()
-		connected_sockets.remove(receiver)
-		
+		logout(reciever)
+
 def login_message(new_guy):
+	print "--Login Message--"
+	#check_users()
+
 	name = users[new_guy]
 	print "[%s] Connected to Server" % name
+
+	
+	msg = "%s\n\t%s\n------------------" % (welcome_message, whos_online())
+	private_message(new_guy, msg)
+
 	for socket in connected_sockets:
-		if socket == server_socket: continue
-		if socket == new_guy:
-			msg = "%s\n\t%d %s\n" % (welcome_message, len(users),'Online')
-			private_message(socket, msg)
-		else:
+		if socket != server_socket and socket != new_guy:
 			msg = "\n--%s Connected--" % name
 			private_message(socket, msg)
 
@@ -50,12 +53,39 @@ def logout(socket):
 	print "Client %s disconected" % name
 
 	msg = "\n--%s Disconnected--\n" % name
-	for socket in connected_sockets:
+	for sock in connected_sockets:
 		try:
-			if socket == server_socket: continue
-			socket.send(msg)
+			if sock != server_socket:
+				sock.send(msg)
 		except:
 			print "--Except in logout--"
+			logout(sock)
+
+def check_users():
+	r, w, err_sockets = select.select(
+		connected_sockets, [], [])
+
+	for socket in err_sockets:
+		logout(socket)
+
+def whos_online():
+	msg = users.values()[0]
+	usr = "User"
+
+	# Handle plurality
+	if len(users.values()) > 1:
+		usr += 's'
+			
+		# Assembles list of users
+		for i in range(1, len(users.values())):
+			u = users.values()[i]
+
+			# Last user in list
+			if i == len(users.values()) -1:
+				msg += " and " + u
+			else:
+				msg += ', ' + u
+	return "%s: %s Online" % (usr, msg)
 
 # Main Method
 if __name__ == "__main__":
@@ -77,6 +107,7 @@ if __name__ == "__main__":
 	print "Server started on %s:%d" % (server_ip, PORT)
 
 	while 1:
+		check_users()
 		read_sockets, write_sockets, err_sockets = select.select(
 			connected_sockets, [], [])
 
@@ -87,7 +118,9 @@ if __name__ == "__main__":
 				print "--New Connection"
 
 				new_socket, addr = server_socket.accept()
-				
+			
+				new_socket.setblocking(0)
+
 				connected_sockets.append(new_socket)
 				
 				#result = login (new_socket)
@@ -112,6 +145,9 @@ if __name__ == "__main__":
 								username = message[9:]
 								users[sock] = username
 								login_message(sock)
+							if message[1:5] == 'list':
+								msg = whos_online()								
+								private_message(sock, msg)
 						else:	
 							name = users[sock]
 							broadcast_message(sock, message)

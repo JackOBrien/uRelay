@@ -26,10 +26,10 @@ if __name__ == "__main__":
 	# Attempts to connect
 	try:
 		sock.connect((host, port))
+		sock.send("`*`*name %s" % username);
 	except:
 		print "Unable to connect to %s on port %d" % (host, port)
-		
-	sock.send("`*`*name %s" % username);
+		sys.exit(2)
 	
 	prompt()
 	
@@ -44,16 +44,18 @@ if __name__ == "__main__":
 			if socket == sock:
 				message = sock.recv(4096)
 				
-				if not message :
+				if not message:
 					print '\nDisconnected from chat server'
 					sys.exit()
-				else :
+				elif message[:4] == '`*`*':
+					continue
+				else:
 					# Prints message from server
-					sys.stdout.write(message)
+					sys.stdout.write("%s" % message)
 					prompt()
-             
+
 			# User entered a message
-			else :
+			else:
 				msg = sys.stdin.readline()
 				sock.send(msg)
 				prompt()
