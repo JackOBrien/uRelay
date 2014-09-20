@@ -19,6 +19,8 @@ if __name__ == "__main__":
 
 	# Asks user for their name
 	username = raw_input("Username: ")
+	username = username.replace(" ", "")
+
 
 	# Create IPv4 socket using TCP
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

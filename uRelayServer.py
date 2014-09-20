@@ -100,12 +100,31 @@ def handle_commands(socket, command):
 		private_message(sock, msg)
 	elif command[1:7] == "logout":
 		logout(socket)
+	elif command[1:3] == "pm":
+		str_arr = command.split()
+		
+		if len(str_arr) < 3:
+			message = "--Usage: /pm <username> <message>--"
+			private_message(socket, message)
+
+		username = str_arr[1]
+		start_index = 4 + len(username) + 1
+
+		p_message = "*%s says* " % users[socket]
+
+		p_message += command[start_index:]
+		
+		receiver = find_key(users, username)
+
+		if receiver is None:
+			message = "--Unable to message %s--" % username
+			private_message(socket, message)
+		else:
+			private_message(receiver, p_message)
 	elif command[1:5] == "kick":
 		username = command[6:].strip()
-		to_kick = None
-		for key in users:
-			if users[key].strip() == username.strip():
-				to_kick = key
+		to_kick = find_key(users, username)
+
 		if to_kick is None:
 			message = "--Unable to kick %s--" % username
 			private_message(socket, message)
@@ -113,16 +132,24 @@ def handle_commands(socket, command):
 			logout(to_kick)
 	elif command[1:3] == "op":
 		username = command [4:].strip()
-		to_op = None
-		for key in users:
-			if users[key].strip() == username.strip():
-				to_op = key
+		to_op = find_key(users, username)
+
 		if to_op is None:
 			message = "--Unable to op %s--" % username
 			private_message(socket, message)
 		else:
 			opped_users[socket] = username
+			message = "--Opping users not yet implemented--"
+			private_message(socket, message)
 
+def find_key(dictionary, value):
+	return_key = None
+
+	for key in dictionary:
+		if dictionary[key] == value:
+			return_key = key
+
+	return return_key
 
 count_blanks = ()
 TOLERANCE = 20
