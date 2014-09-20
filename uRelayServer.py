@@ -1,6 +1,8 @@
 import socket, select
 
 users = {}
+opped_users = {}
+OP_PASSWORD = "1337hax"
 
 welcome_message = "Welcome!"
 
@@ -89,23 +91,38 @@ def whos_online():
 
 def handle_commands(socket, command):
 	print "--Handle_Command--"
-	if command[:7] == "/logout":
+	if command[:8] == "`*`*name":
+		username = command[9:]
+		users[sock] = username
+		login_message(sock)
+	elif command[1:5] == 'list':
+		msg = whos_online()							
+		private_message(sock, msg)
+	elif command[1:7] == "logout":
 		logout(socket)
-	if command[:5] == "/kick":
-		username = command[6:]
+	elif command[1:5] == "kick":
+		username = command[6:].strip()
 		to_kick = None
 		for key in users:
-			print "--Looking at %s" % users[key]
-			print username == users[key]
 			if users[key].strip() == username.strip():
 				to_kick = key
-				print "found da key"
 		if to_kick is None:
 			message = "--Unable to kick %s--" % username
 			private_message(socket, message)
 		else:
-			print "bout to logout"
 			logout(to_kick)
+	elif command[1:3] == "op":
+		username = command [4:].strip()
+		to_op = None
+		for key in users:
+			if users[key].strip() == username.strip():
+				to_op = key
+		if to_op is None:
+			message = "--Unable to op %s--" % username
+			private_message(socket, message)
+		else:
+			opped_users[socket] = username
+
 
 count_blanks = ()
 TOLERANCE = 20
@@ -145,11 +162,7 @@ if __name__ == "__main__":
 				new_socket.setblocking(0)
 
 				connected_sockets.append(new_socket)
-				
-				#result = login (new_socket)
 					
-				
-				
 			# Incoming message
 			else:
 				try: sock.getpeername()
@@ -165,13 +178,6 @@ if __name__ == "__main__":
 						
 						# Check for command
 						if message[:1] == '/' or message[:4] == '`*`*':
-							if message[:8] == "`*`*name":
-								username = message[9:]
-								users[sock] = username
-								login_message(sock)
-							if message[1:5] == 'list':
-								msg = whos_online()							
-								private_message(sock, msg)
 							handle_commands(sock, message)
 						else:	
 							name = users[sock]
