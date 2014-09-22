@@ -9,12 +9,22 @@ class User(object):
 	socket = None
 
 	def __init__(self, sock, name):
-		print "--We're in USER!!!"
-		socket = sock
-		username = name
+		self.socket = sock
+		self.username = name
 
-	def getName():
-		return username
+	def getName(self):
+		return self.username
+
+	def addGroup(self, new_group):
+		self.group = new_group
+
+	def getGroup(self):	
+		return self.group
+
+	def inGroup(self):
+		if not self.group:
+			return False
+		return True
 
 	def __str__(self):
-		return username
+		return self.username

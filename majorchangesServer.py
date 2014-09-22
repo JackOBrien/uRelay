@@ -3,26 +3,37 @@ from uRelayGroup import Group
 from uRelayUser import User
 
 users = {}
-OP_PASSWORD = "1337hax"
+groups = []
 
 welcome_message = "Welcome!"
 
-# Sends message to all connected users except sender
+# Sends message to all connected users except sender and users
+# in seperate chat rooms
 def broadcast_message(sender, message):
 	print "--Broadcasting: %s" % message
 	for socket in connected_sockets:
 		if socket != server_socket and socket != sender:
+			if users[socket].inGroup(): continue
 			try:
-				sender_name = users[sender]
+				sender_name = users[sender].getName()
 				socket.send("\n<%s> %s" % (sender_name, message))
-				print "--Sent message to %s" % users[socket].get
+				print "--Sent message to %s" % users[socket].getName()
 			except:
 				
 				print "--Except in boradcast"
 
 				logout(socket)
-
 	
+# Sends message to every user except sender if true
+def global_message(message, sender):
+	for socket in connected_sockets:
+		if socket != server_socket:
+			if not sender or socket != sender:
+				try:
+					socket.send(message)
+				except:
+					logout(socket)
+
 def private_message (receiver, message):
 	try:
 		receiver.send("%s\n" % message)
@@ -31,7 +42,6 @@ def private_message (receiver, message):
 
 def login_message(new_guy):
 	print "--Login Message--"
-	#check_users()
 
 	name = users[new_guy]
 	print "[%s] Connected to Server" % name
@@ -48,12 +58,15 @@ def login_message(new_guy):
 # Removes socket 
 def logout(socket):
 	print "-- Attempting to logout"
-	name = users[socket]
+	usr = users[socket]
 	print "-- Loging out <%s>" % name
+	if usr.inGroup():
+		group = usr.getGroup()
+		group.remove_user(usr)
 	del users[socket]
 	connected_sockets.remove(socket)
 	socket.close()
-	print "Client %s disconected" % name
+	print "Client %s disconected" % usr
 
 	msg = "\n--%s Disconnected--\n" % name
 	for sock in connected_sockets:
@@ -118,7 +131,7 @@ def handle_commands(socket, command):
 		str_arr = command.split()
 		
 		if len(str_arr) < 3:
-			message = "--Usage: /pm <username> <message>--"
+			message = "--Usage: /pm <user_name> <message>--"
 			private_message(socket, message)
 
 		username = str_arr[1]
@@ -139,11 +152,30 @@ def handle_commands(socket, command):
 	# Creates a user group
 	elif command[1:12] == "creategroup":
 		group_name = command[13:].strip()
-		
-		new_group = Group(group_name)
-		new_group.add_user(socket, users[socket])
+		create_group(socket, group_name)
 
-		
+	# Create a user group macro
+	elif command[1:3] == "cg":
+		group_name = command[4:].strip()
+		create_group(socket, group_name)
+
+	# Adds a user to a group
+	elif command[1:5] == "join":
+		group_name = ""
+		group_name = command[6:].strip()
+		join_group(socket, group_name)
+
+	# Leaves group
+	elif command[1:6] == "leave":
+		if not users[socket].inGroup():
+			message = "--You're not in a group--"
+			private_message(socket, message)
+		else:
+			group = users[socket].getGroup()
+			group.remove_user(socket)
+			users[socket].addGroup(None)
+			message = "--You've left %s--" % group.getName()
+			private_message(socket, message)
 
 	# Kicks names user from server
 	elif command[1:5] == "kick":
@@ -154,6 +186,9 @@ def handle_commands(socket, command):
 			message = "--Unable to kick %s--" % username
 			private_message(socket, message)
 		else:
+			kicker = users[socket].getName()
+			message = "--%s kicked you from the server--" % kicker
+			private_message(to_kick, message)
 			logout(to_kick)
 
 	# Makes a user able to perform admin commands <not implimented>
@@ -169,9 +204,59 @@ def handle_commands(socket, command):
 			message = "--Opping users not yet implemented--"
 			private_message(socket, message)
 
+	else:
+		message = 
+
+def create_group(socket, group_name):
+	user_name = users[socket].getName()
+	if len(group_name) < 1:
+		message = "--Usage: /creategroup <group_name>--"
+		private_message(socket, message)
+	else:
+		for g in groups:
+			if g.getName() == group_name:
+				join_group(socket, group_name)
+				return
+		new_group = Group(group_name)
+		new_group.add_user(socket, users[socket].getName())
+		users[socket].addGroup(new_group)
+		groups.append(new_group)
+		print "--Added user to group--"
+		msg = "--Group %s created by %s--\n" % (group_name, user_name)
+		global_message(msg, None)
+		msg = "~~Group %s created~~" % group_name
+		private_message(socket, msg)
+
+def join_group(socket, group_name):
+	print "--Join group--"
+	user_name = users[socket].getName()
+	print "--%s attempting to join %s--" % (user_name, group_name)
+	if len(group_name) < 1:
+		message = "--Usage: /join <group_name>--"
+		private_message(socket, message)
+	else:
+		to_join = None
+		try:
+			for g in groups:
+				print "-- For --"
+				if g.getName() == group_name:
+					to_join = g
+			if to_join == None:
+				print "--Unable--"
+				message = "--Unable to join group %s--\n" % group_name
+				private_message(socket, message)
+			else:
+				print "-- Attempting to add user to group--"
+				to_join.add_user(socket, users[socket])
+				users[socket].addGroup(to_join)
+				message = "~~Joined %s~~" % group_name
+				private_message(socket, message)
+		except Exception as e:
+			print(e)
+
 def find_key(dictionary, value):
 	for key in dictionary:
-		if dictionary[key] == value:
+		if dictionary[key].getName() == value:
 			return key
 
 	return None 
@@ -238,10 +323,16 @@ if __name__ == "__main__":
 						if message[:1] == '/' or message[:4] == '`*`*':
 							handle_commands(sock, message)
 						else:	
-							name = users[sock]
-							broadcast_message(sock, message)
+							user = users[sock]
 
-							print "[%s] %s" % (name, message)
+							if user.getGroup() == None:					
+								broadcast_message(sock, message)
+								print "[%s] %s" % (user, message)
+							else:
+								print "--Tring to send a group message--"
+								group = user.getGroup()
+								group.group_broadcast(sock, message)
+								print "{%s} %s" % (user, message)
 
 					# Checks for disconnected users
 					else:
@@ -253,8 +344,9 @@ if __name__ == "__main__":
 						else:
 							count_blanks[0] = peer
 							count_blanks[1] = 1
-				except:
-					print "--Except in recieving"
+				except Exception as e:
+					
+					print "--Except in recieving: %s" % e
 					print "--Exception from %s" % str(sock.getpeername())	
 
 					logout(sock)

@@ -6,24 +6,31 @@ class Group(object):
 	group_users = {}
 
 	# Constructor
-	def __init__(name):
-		group_name = name
+	def __init__(self, name):
+		self.group_name = name
 
-	def add_user(socket, user):
-		group_users[socket] = user
-		message = "~~%s joined %s~~" % (user.getName(), group_name)
-		group_broadcast(socket, message)
+	def add_user(self, socket, user):
+		print "--Group add user--"
+		self.group_users[socket] = user
+		message = "~~%s joined %s~~\n" % (user, self.group_name)
+		self.group_broadcast(socket, message)
 	
-	def remove_user(socket):
-		user = group_users[socket]
-		del group_users[socket]
-		message = "~~%s disconnected~~" % user
-		group_broadcast(socket, message)
+	def remove_user(self, socket):
+		user = self.group_users[socket]
+		message = "~~%s disconnected~~\n" % user
+		self.group_broadcast(socket, message)
+		del self.group_users[socket]
 
-	def group_broadcast(sender, message):
-		for socket in group_users:
+	def group_broadcast(self, sender, message):
+		print "--Group Broadcast--"
+		for socket in self.group_users:
 			if socket != sender:
 				try:
-					socket.send("{%s} %s" % (group_users[sender], message))
+					print "--Trying to send message--"
+					socket.send("\n{%s} %s" % (
+						self.group_users[sender], message))
 				except:
-					remove_user(socket)
+					print "--Trying to remove user--"
+					self.remove_user(socket)
+	def getName(self):
+		return self.group_name
