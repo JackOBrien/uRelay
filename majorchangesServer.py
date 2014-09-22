@@ -59,7 +59,7 @@ def login_message(new_guy):
 def logout(socket):
 	print "-- Attempting to logout"
 	usr = users[socket]
-	print "-- Loging out <%s>" % name
+	print "-- Loging out <%s>" %usr 
 	if usr.inGroup():
 		group = usr.getGroup()
 		group.remove_user(usr)
@@ -68,7 +68,7 @@ def logout(socket):
 	socket.close()
 	print "Client %s disconected" % usr
 
-	msg = "\n--%s Disconnected--\n" % name
+	msg = "\n--%s Disconnected--\n" % usr
 	for sock in connected_sockets:
 		try:
 			if sock != server_socket:
@@ -121,6 +121,23 @@ def handle_commands(socket, command):
 	elif command[1:5] == 'list':
 		msg = whos_online()							
 		private_message(sock, msg)
+
+	# Displays a list of commands
+	elif command[1:5] == 'help':
+		msg = "Commands able to be used on this server are:"
+		msg += "\n/list  \t\tDisplays list of users connected to the server"
+		msg += "\n/logout\t\tLogs you off of the server"
+		msg += "\n/pm    \t\tAllows you to send a private message to a"
+		msg += " specified user"
+		msg += "\n/creategroup\tAllows you to create and join a user group"
+		msg += " with a specified name"
+		msg += "\n/cg    \t\tSee /creategroup"
+		msg += "\n/join  \t\tAllows you to join a specified group"
+		msg += "\n/leave \t\tAllows you to leave your group"
+		msg += "\n/kick  \t\tKicks the specified user from the server"
+		msg += "\n/help  \t\tDisplays this message"
+
+		private_message(socket, msg)
 
 	# Logs out user
 	elif command[1:7] == "logout":
@@ -205,7 +222,10 @@ def handle_commands(socket, command):
 			private_message(socket, message)
 
 	else:
-		message = 
+		c = command.strip()
+		message = "--Command '%s' not recognized--" % c
+		message += "\n--Use /help for a list of commands--"
+		private_message(socket, message)
 
 def create_group(socket, group_name):
 	user_name = users[socket].getName()
@@ -223,7 +243,7 @@ def create_group(socket, group_name):
 		groups.append(new_group)
 		print "--Added user to group--"
 		msg = "--Group %s created by %s--\n" % (group_name, user_name)
-		global_message(msg, None)
+		global_message(msg, socket)
 		msg = "~~Group %s created~~" % group_name
 		private_message(socket, msg)
 
