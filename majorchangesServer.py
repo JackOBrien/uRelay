@@ -4,6 +4,7 @@ from uRelayUser import User
 
 users = {}
 groups = []
+op_pass = "1337"
 
 welcome_message = "Welcome!"
 
@@ -59,10 +60,10 @@ def login_message(new_guy):
 def logout(socket):
 	print "-- Attempting to logout"
 	usr = users[socket]
-	print "-- Loging out <%s>" %usr 
+	print "-- Loging out <%s>" % usr 
 	if usr.inGroup():
 		group = usr.getGroup()
-		group.remove_user(usr)
+		group.remove_user(socket)
 	del users[socket]
 	connected_sockets.remove(socket)
 	socket.close()
@@ -134,7 +135,12 @@ def handle_commands(socket, command):
 		msg += "\n/cg    \t\tSee /creategroup"
 		msg += "\n/join  \t\tAllows you to join a specified group"
 		msg += "\n/leave \t\tAllows you to leave your group"
-		msg += "\n/kick  \t\tKicks the specified user from the server"
+		
+		if users[socket].isOp():
+			msg += "\n/kick  \t\tKicks the specified user from the server"
+			msg += "\n/op    \t\tPromotes the specified user to"
+			msg += " operator user privileges"
+
 		msg += "\n/help  \t\tDisplays this message"
 
 		private_message(socket, msg)
@@ -146,7 +152,7 @@ def handle_commands(socket, command):
 	# Private messages names user
 	elif command[1:3] == "pm":
 		str_arr = command.split()
-		
+
 		if len(str_arr) < 3:
 			message = "--Usage: /pm <user_name> <message>--"
 			private_message(socket, message)
@@ -199,6 +205,11 @@ def handle_commands(socket, command):
 		username = command[6:].strip()
 		to_kick = find_key(users, username)
 
+		if not users[socket].isOp():
+			message = "--You must be an Op to use /kick--"
+			private_message(socket, message)
+			return
+
 		if to_kick is None:
 			message = "--Unable to kick %s--" % username
 			private_message(socket, message)
@@ -210,16 +221,34 @@ def handle_commands(socket, command):
 
 	# Makes a user able to perform admin commands <not implimented>
 	elif command[1:3] == "op":
-		username = command [4:].strip()
+		print "--Attempting to Op--"
+		str_arr = command.split()
+	
+		if users[socket].isOp():
+			if len(str_arr) < 2:
+				message = "--Usage: /op <user_name>"
+				private_message(socket, message)
+		else:
+			if len(str_arr) < 3:
+				message = "--Usage: /op <user_name> <password>--"
+				private_message(socket, message)
+
+		username = str_arr[1]
+		start_index = 4 + len(username) + 1
 		to_op = find_key(users, username)
 
+		attempt = command[start_index:].strip()
+		print "--Attempt %s--" % attempt
 		if to_op is None:
 			message = "--Unable to op %s--" % username
 			private_message(socket, message)
 		else:
-			opped_users[socket] = username
-			message = "--Opping users not yet implemented--"
-			private_message(socket, message)
+			if not users[socket].isOp():
+				if attempt != op_pass:
+					message = "--Password incorrect--"
+					private_message(socket, message)
+					return
+			op_user(to_op, socket)
 
 	else:
 		c = command.strip()
@@ -273,6 +302,18 @@ def join_group(socket, group_name):
 				private_message(socket, message)
 		except Exception as e:
 			print(e)
+
+def op_user(to_op, socket):
+	username = users[to_op].getName()
+	if users[to_op].isOp():
+		message = "--User %s is already an Op--" % username
+		private_message(socket, message)
+	else:
+		message = "--User %s is now an Op--" % username
+		private_message(socket, message)
+		message = "--You are now an Op--"
+		private_message(to_op, message)
+		users[to_op].setOp(True)
 
 def find_key(dictionary, value):
 	for key in dictionary:

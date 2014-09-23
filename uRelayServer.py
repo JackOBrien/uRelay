@@ -1,7 +1,8 @@
 import socket, select
+from uRelayGroup import Group
+from uRelayUser import User
 
 users = {}
-opped_users = {}
 OP_PASSWORD = "1337hax"
 
 welcome_message = "Welcome!"
@@ -14,7 +15,7 @@ def broadcast_message(sender, message):
 			try:
 				sender_name = users[sender]
 				socket.send("\n<%s> %s" % (sender_name, message))
-				print "--Sent message to %s" % users[socket]
+				print "--Sent message to %s" % users[socket].get
 			except:
 				
 				print "--Except in boradcast"
@@ -71,7 +72,7 @@ def check_users():
 		logout(socket)
 
 def whos_online():
-	msg = users.values()[0]
+	msg = users.values()[0].getName()
 	usr = "User"
 
 	# Handle plurality
@@ -80,7 +81,7 @@ def whos_online():
 			
 		# Assembles list of users
 		for i in range(1, len(users.values())):
-			u = users.values()[i]
+			u = users.values()[i].getName()
 
 			# Last user in list
 			if i == len(users.values()) -1:
@@ -91,15 +92,28 @@ def whos_online():
 
 def handle_commands(socket, command):
 	print "--Handle_Command--"
+	
+	# Sets the username
 	if command[:8] == "`*`*name":
+		print "--Attempting to create new user--"
 		username = command[9:]
-		users[sock] = username
-		login_message(sock)
+		print "--Making User for %s--" % username
+		x = User(socket, username)
+		print "--Make it this far--"
+		users[socket] = x
+		print "--Created User: %s" % users[socket].getName()
+		login_message(socket)
+	
+	# Displays a list of connected users
 	elif command[1:5] == 'list':
 		msg = whos_online()							
 		private_message(sock, msg)
+
+	# Logs out user
 	elif command[1:7] == "logout":
 		logout(socket)
+	
+	# Private messages names user
 	elif command[1:3] == "pm":
 		str_arr = command.split()
 		
@@ -121,6 +135,17 @@ def handle_commands(socket, command):
 			private_message(socket, message)
 		else:
 			private_message(receiver, p_message)
+	
+	# Creates a user group
+	elif command[1:12] == "creategroup":
+		group_name = command[13:].strip()
+		
+		new_group = Group(group_name)
+		new_group.add_user(socket, users[socket])
+
+		
+
+	# Kicks names user from server
 	elif command[1:5] == "kick":
 		username = command[6:].strip()
 		to_kick = find_key(users, username)
@@ -130,6 +155,8 @@ def handle_commands(socket, command):
 			private_message(socket, message)
 		else:
 			logout(to_kick)
+
+	# Makes a user able to perform admin commands <not implimented>
 	elif command[1:3] == "op":
 		username = command [4:].strip()
 		to_op = find_key(users, username)
@@ -143,13 +170,17 @@ def handle_commands(socket, command):
 			private_message(socket, message)
 
 def find_key(dictionary, value):
-	return_key = None
-
 	for key in dictionary:
 		if dictionary[key] == value:
-			return_key = key
+			return key
 
-	return return_key
+	return None 
+
+def find_group(g_name):
+	for g in groups:
+		if g.group_name == g_name:
+			return g
+	return None
 
 count_blanks = ()
 TOLERANCE = 20

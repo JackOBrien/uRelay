@@ -16,8 +16,11 @@ class Group(object):
 		self.group_broadcast(socket, message)
 	
 	def remove_user(self, socket):
+		print "--Removing user--"
 		user = self.group_users[socket]
+		print "--235213462136--"
 		message = "~~%s disconnected~~\n" % user
+		print "--REMOVE USER--"
 		self.group_broadcast(socket, message)
 		del self.group_users[socket]
 

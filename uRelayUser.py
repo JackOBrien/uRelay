@@ -26,5 +26,11 @@ class User(object):
 			return False
 		return True
 
+	def setOp(self, p):
+		self.op = p
+
+	def isOp(self):
+		return self.op
+
 	def __str__(self):
 		return self.username
