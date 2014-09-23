@@ -27,6 +27,7 @@ def broadcast_message(sender, message):
 	
 # Sends message to every user except sender if true
 def global_message(message, sender):
+	print "--global_message--"
 	for socket in connected_sockets:
 		if socket != server_socket:
 			if not sender or socket != sender:
@@ -249,7 +250,10 @@ def handle_commands(socket, command):
 					private_message(socket, message)
 					return
 			op_user(to_op, socket)
-
+	elif command[1:7] == "global":
+		message = command[8:].split()
+		global_message(message, socket)
+		
 	else:
 		c = command.strip()
 		message = "--Command '%s' not recognized--" % c
