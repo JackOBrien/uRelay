@@ -11,29 +11,26 @@ welcome_message = "Welcome!"
 # Sends message to all connected users except sender and users
 # in seperate chat rooms
 def broadcast_message(sender, message):
-	print "--Broadcasting: %s" % message
 	for socket in connected_sockets:
 		if socket != server_socket and socket != sender:
 			if users[socket].inGroup(): continue
 			try:
 				sender_name = users[sender].getName()
 				socket.send("\n<%s> %s" % (sender_name, message))
-				print "--Sent message to %s" % users[socket].getName()
 			except:
-				
 				print "--Except in boradcast"
-
 				logout(socket)
 	
 # Sends message to every user except sender if true
 def global_message(message, sender):
-	print "--global_message--"
+	print "Global from %s: %s" % (users[sender], message)
 	for socket in connected_sockets:
 		if socket != server_socket:
 			if not sender or socket != sender:
 				try:
 					socket.send(message)
-				except:
+				except Exception as e:
+					print e
 					logout(socket)
 
 def private_message (receiver, message):
@@ -43,13 +40,11 @@ def private_message (receiver, message):
 		logout(receiver)
 
 def login_message(new_guy):
-	print "--Login Message--"
-
 	name = users[new_guy]
 	print "[%s] Connected to Server" % name
-
 	
-	msg = "%s\n\t%s\n------------------" % (welcome_message, whos_online())
+	msg = "%s\n\t%s\n------------------" % (
+		welcome_message, whos_online())
 	private_message(new_guy, msg)
 
 	for socket in connected_sockets:
@@ -59,9 +54,7 @@ def login_message(new_guy):
 
 # Removes socket 
 def logout(socket):
-	print "-- Attempting to logout"
 	usr = users[socket]
-	print "-- Loging out <%s>" % usr 
 	if usr.inGroup():
 		group = usr.getGroup()
 		group.remove_user(socket)
@@ -79,6 +72,7 @@ def logout(socket):
 			print "--Except in logout--"
 			logout(sock)
 
+# Checks for error sockets and logs them out
 def check_users():
 	r, w, err_sockets = select.select(
 		connected_sockets, [], [])
@@ -86,6 +80,7 @@ def check_users():
 	for socket in err_sockets:
 		logout(socket)
 
+# Assembles a list of connected users
 def whos_online():
 	msg = users.values()[0].getName()
 	usr = "User"
@@ -103,24 +98,24 @@ def whos_online():
 				msg += " and " + u
 			else:
 				msg += ', ' + u
+
 	return "%s: %s Online" % (usr, msg)
 
+# Handles messages starting with '/' or '`*`*'
 def handle_commands(socket, command):
-	print "--Handle_Command--"
-	
+
 	# Sets the username
 	if command[:8] == "`*`*name":
-		print "--Attempting to create new user--"
 		username = command[9:]
-		print "--Making User for %s--" % username
 		x = User(socket, username)
-		print "--Make it this far--"
 		users[socket] = x
-		print "--Created User: %s" % users[socket].getName()
 		login_message(socket)
-	
+		return
+
+	print "--Command %s from %s--" % (command[:-1], users[socket])	
+
 	# Displays a list of connected users
-	elif command[1:5] == 'list':
+	if command[1:5] == 'list':
 		msg = whos_online()							
 		private_message(sock, msg)
 
@@ -136,6 +131,8 @@ def handle_commands(socket, command):
 		msg += "\n/cg    \t\tSee /creategroup"
 		msg += "\n/join  \t\tAllows you to join a specified group"
 		msg += "\n/leave \t\tAllows you to leave your group"
+		msg += "\n/groups\t\tDisplays list of groups and their users"
+		msg += "\n/global\t\tAllows you to send a message to ALL users"
 		
 		if users[socket].isOp():
 			msg += "\n/kick  \t\tKicks the specified user from the server"
@@ -150,28 +147,29 @@ def handle_commands(socket, command):
 	elif command[1:7] == "logout":
 		logout(socket)
 	
-	# Private messages names user
+	# Private messages named user
 	elif command[1:3] == "pm":
 		str_arr = command.split()
 
 		if len(str_arr) < 3:
 			message = "--Usage: /pm <user_name> <message>--"
 			private_message(socket, message)
+			return
 
 		username = str_arr[1]
 		start_index = 4 + len(username) + 1
 
-		p_message = "*%s says* " % users[socket]
-
-		p_message += command[start_index:]
-		
+		head = "*%s says* " % users[socket]
+		p_message = command[start_index:-1]
 		receiver = find_key(users, username)
 
 		if receiver is None:
 			message = "--Unable to message %s--" % username
 			private_message(socket, message)
 		else:
-			private_message(receiver, p_message)
+			print "[%s -> %s] %s" % (users[socket], 
+				username, p_message)
+			private_message(receiver, head + p_message)
 	
 	# Creates a user group
 	elif command[1:12] == "creategroup":
@@ -220,9 +218,8 @@ def handle_commands(socket, command):
 			private_message(to_kick, message)
 			logout(to_kick)
 
-	# Makes a user able to perform admin commands <not implimented>
+	# Makes a user able to perform admin commands
 	elif command[1:3] == "op":
-		print "--Attempting to Op--"
 		str_arr = command.split()
 	
 		if users[socket].isOp():
@@ -239,7 +236,6 @@ def handle_commands(socket, command):
 		to_op = find_key(users, username)
 
 		attempt = command[start_index:].strip()
-		print "--Attempt %s--" % attempt
 		if to_op is None:
 			message = "--Unable to op %s--" % username
 			private_message(socket, message)
@@ -250,8 +246,35 @@ def handle_commands(socket, command):
 					private_message(socket, message)
 					return
 			op_user(to_op, socket)
+
+	# Displays a list of user groups
+	elif command[1:7] == "groups":
+		num_groups = len(groups)
+
+		if num_groups < 1:
+			message = "--There are no groups on the server--"
+			private_message(socket, message)
+			return
+
+		if num_groups == 1:
+			message = "There is 1 group on the server:"
+		else:
+			message = "There are %d groups on the server:" % num_groups
+
+		for g in groups:
+			message += "\n%s:\t" % g.getName()
+			message += ", ".join(str(users[u]) for u in g.getUsers())
+
+		private_message(socket, message)
+
+	# Send message to all users
 	elif command[1:7] == "global":
-		message = command[8:].split()
+		if len(command.strip()) < 9:
+			message = "--Usage /global <message>--"
+			private_message(socket, message)
+			return
+
+		message = "\n[%s] %s\n" % (users[socket], command[8:].strip())
 		global_message(message, socket)
 		
 	else:
@@ -260,53 +283,72 @@ def handle_commands(socket, command):
 		message += "\n--Use /help for a list of commands--"
 		private_message(socket, message)
 
+# Creates group unless the group already exsists or the user
+# is already in a group
 def create_group(socket, group_name):
 	user_name = users[socket].getName()
 	if len(group_name) < 1:
 		message = "--Usage: /creategroup <group_name>--"
 		private_message(socket, message)
 	else:
+		if users[socket].inGroup():
+			message = "--You're already in group %s!--" % (
+				users[socket].getGroup().getName())
+			private_message(socket, message)
+			return
+
+		# Checks if a groups with that name already exsists
 		for g in groups:
 			if g.getName() == group_name:
 				join_group(socket, group_name)
 				return
+
 		new_group = Group(group_name)
 		new_group.add_user(socket, users[socket].getName())
 		users[socket].addGroup(new_group)
 		groups.append(new_group)
-		print "--Added user to group--"
+		
 		msg = "--Group %s created by %s--\n" % (group_name, user_name)
 		global_message(msg, socket)
+		print msg[:-1]
+
 		msg = "~~Group %s created~~" % group_name
 		private_message(socket, msg)
 
+# Joins the named group if it exsists and the user is not already
+# in a group.
 def join_group(socket, group_name):
-	print "--Join group--"
 	user_name = users[socket].getName()
-	print "--%s attempting to join %s--" % (user_name, group_name)
+
 	if len(group_name) < 1:
 		message = "--Usage: /join <group_name>--"
 		private_message(socket, message)
 	else:
+		if users[socket].inGroup():
+			message = "--You're already in group %s" % (
+				users[socket].getGroup().getName())
+			private_message(socket, message)
+			return
 		to_join = None
 		try:
 			for g in groups:
-				print "-- For --"
 				if g.getName() == group_name:
 					to_join = g
+					break
 			if to_join == None:
-				print "--Unable--"
 				message = "--Unable to join group %s--\n" % group_name
 				private_message(socket, message)
 			else:
-				print "-- Attempting to add user to group--"
 				to_join.add_user(socket, users[socket])
 				users[socket].addGroup(to_join)
 				message = "~~Joined %s~~" % group_name
 				private_message(socket, message)
+				print "--%s joined %s--" % (user_name, group_name)
 		except Exception as e:
 			print(e)
 
+# Gives the named user opperator privileges if the person 
+# sending the command is an Op, or has the right password
 def op_user(to_op, socket):
 	username = users[to_op].getName()
 	if users[to_op].isOp():
@@ -319,6 +361,7 @@ def op_user(to_op, socket):
 		private_message(to_op, message)
 		users[to_op].setOp(True)
 
+# Searches dictionary by value
 def find_key(dictionary, value):
 	for key in dictionary:
 		if dictionary[key].getName() == value:
@@ -326,12 +369,14 @@ def find_key(dictionary, value):
 
 	return None 
 
+# Finds a group by name
 def find_group(g_name):
 	for g in groups:
 		if g.group_name == g_name:
 			return g
 	return None
 
+# Used to check for logged out users
 count_blanks = ()
 TOLERANCE = 20
 
@@ -350,38 +395,36 @@ if __name__ == "__main__":
 	server_socket.bind(("0.0.0.0", PORT))
 	server_socket.listen(10)
 
+	# Adds server to list of connected sockets
 	connected_sockets.append(server_socket)
 
 	print "Server started on %s:%d" % (server_ip, PORT)
 
+	# Continually looks for messages and new users
 	while 1:
 		check_users()
+		
 		read_sockets, write_sockets, err_sockets = select.select(
 			connected_sockets, [], [])
 
+		# Loops through all readable sockets
 		for sock in read_sockets:
 			
 			# New Connection
 			if sock == server_socket:
-				print "--New Connection"
 
+				# Connection is added, but user object is not
+				# created until a username is received from
+				# this socket
 				new_socket, addr = server_socket.accept()
-			
 				new_socket.setblocking(0)
-
 				connected_sockets.append(new_socket)
 					
 			# Incoming message
 			else:
-				try: sock.getpeername()
-				except:
-					continue
-
 				try:
-					print "--Recieving message from: %s" % str(
-						sock.getpeername())
 					message = sock.recv(BUFFER)
-					print "--Message says: %s" % message
+
 					if message:
 						
 						# Check for command
@@ -390,17 +433,23 @@ if __name__ == "__main__":
 						else:	
 							user = users[sock]
 
+							# Checks if user is in a group
 							if user.getGroup() == None:					
 								broadcast_message(sock, message)
 								print "[%s] %s" % (user, message)
 							else:
-								print "--Tring to send a group message--"
 								group = user.getGroup()
 								group.group_broadcast(sock, message)
 								print "{%s} %s" % (user, message)
 
 					# Checks for disconnected users
 					else:
+						
+						# When a socket disconects, the server
+						# recevies blank messages from that socket
+						# until there is a new action on the server.
+						# This block check for this case to detect
+						# a newly disconnected user.
 						peer = sock.getpeername()
 						if count_blanks[0] == peer:
 							count_blanks[1] += 1
@@ -410,9 +459,7 @@ if __name__ == "__main__":
 							count_blanks[0] = peer
 							count_blanks[1] = 1
 				except Exception as e:
-					
 					print "--Except in recieving: %s" % e
-					print "--Exception from %s" % str(sock.getpeername())	
 
 					logout(sock)
 

@@ -22,8 +22,6 @@ class Group(object):
 
 	# Messages the entire group
 	def group_broadcast(self, sender, message):
-		print "~~Broadcasting to %s: %s" % (
-			self.group_name, self.group_users[sender])
 		for socket in self.group_users:
 			if socket != sender:
 				try:
