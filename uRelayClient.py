@@ -1,5 +1,7 @@
 import socket, sys, select
 
+XFC_PREFIX = '.%%'
+
 username = ""
 
 def prompt() :
@@ -51,6 +53,17 @@ if __name__ == "__main__":
 					sys.exit()
 				elif message[:4] == '`*`*':
 					continue
+				elif message[1:4] == XFC_PREFIX:
+					print 'Received Custom XFC Message'
+					sys.stdout.write(message[:5])
+					msg = "Please enter your XFC code (do not include the dashes)"
+					sys.stdout.write(msg)
+					prompt()
+					msg = sys.stdin.readline()
+					
+					# Add prefex before return to server
+					sock.send("%s%s" % (XFC_PREFIX. msg)
+					prompt()
 				else:
 					# Prints message from server
 					sys.stdout.write("%s" % message)
